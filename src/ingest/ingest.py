@@ -25,7 +25,7 @@ def get_thread_comments(thread_id):
     response = requests.get(base_url)
     if response.status_code == 200:
         data = response.json()
-        return [comment['text'] for comment in data.get('children', []) if 'text' in comment]
+        return [{"id":comment["id"], "comment":comment['text'], "createdAt":comment["created_at"],"thread_month":comment["created_at"][5:7]} for comment in data.get('children', []) if 'text' in comment]
     else:
         print(f"Error fetching comments for thread {thread_id}: {response.status_code}")
         return []
@@ -43,12 +43,13 @@ def save_comments_to_db(thread_id, comments):
         )
         cursor = connection.cursor()
         for comment in comments:
-            soup = BeautifulSoup(comment, 'html.parser')
+            print(comment)
+            soup = BeautifulSoup(comment["comment"], 'html.parser')
             cursor.execute(
                 "INSERT INTO posting "
                 "(source, source_id, raw_html, text, posted_at, thread_month, fetched_at ) "
-                "VALUES ('hn', %s, %s, %s, NOW(), EXTRACT(MONTH FROM NOW())::INT, NOW())",
-                (thread_id, comment, soup.get_text())
+                "VALUES ('hn', %s, %s, %s, %s, %s, NOW())",
+                (comment["id"], comment["comment"],soup.get_text(),comment["createdAt"],comment["thread_month"] )
             )
         connection.commit()
         cursor.close()
