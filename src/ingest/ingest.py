@@ -1,6 +1,8 @@
 import requests
 import psycopg2
 from bs4 import BeautifulSoup
+from psycopg2.errors import UniqueViolation
+
 
 def get_hiring_threads():
 
@@ -43,20 +45,30 @@ def save_comments_to_db(thread, comments):
         )
         cursor = connection.cursor()
         for comment in comments:
-            print(comment)
             soup = BeautifulSoup(comment["comment"], 'html.parser')
-            cursor.execute(
-                "INSERT INTO posting "
-                "(source, source_id, raw_html, text, posted_at, thread_month, fetched_at ) "
-                "VALUES ('hn', %s, %s, %s, %s, %s, NOW())",
-                (comment["id"], comment["comment"],soup.get_text(),comment["createdAt"],thread["thread_month"] )
-            )
-        connection.commit()
+            try:
+                cursor.execute(
+                    "INSERT INTO posting "
+                    "(source, source_id, raw_html, text, posted_at, thread_month, fetched_at ) "
+                    "VALUES ('hn', %s, %s, %s, %s, %s, NOW())",
+                    (comment["id"], comment["comment"],soup.get_text(),comment["createdAt"],thread["thread_month"] )
+                )
+                connection.commit()
+
+            except UniqueViolation as e:
+                print(f"Duplicate entry for comment {comment['id']}: {e}")
+                connection.rollback()
+                cursor.execute(
+                    "UPDATE posting SET " 
+                    "raw_html = %s, text = %s, fetched_at = NOW() WHERE source='hn' AND source_id='%s' ;",
+                    (comment["comment"],soup.get_text(),comment["id"]))
+                connection.commit()
+
         cursor.close()
         connection.close()
     except Exception as e:
         print(f"Error saving comments to the database: {e}")
-    print(f"Saving comments for thread {thread["id"]} to the database...")
+    print(f"Saving comments for thread {thread['id']} to the database...")
 
 
 def main():
