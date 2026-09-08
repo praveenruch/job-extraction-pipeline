@@ -15,7 +15,7 @@ def get_hiring_threads():
     response = requests.get(base_url, params=params)
     if response.status_code == 200:
         data = response.json()
-        return [{"id": hits['objectID'], "thread_month":hits["created_at"][5:7]+"-"+hits["created_at"][0:4]} for hits in data['hits']]
+        return [{"id": hits['objectID'], "thread_month":hits["created_at"][0:4]+"-"+hits["created_at"][5:7]} for hits in data['hits']]
     else:
         print(f"Error fetching hiring threads: {response.status_code}")
         return []
