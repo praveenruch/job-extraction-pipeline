@@ -5,6 +5,6 @@ create table posting (
 	raw_html text,
 	text text,
 	posted_at timestamptz,
-	thread_month int4,
+	thread_month varchar(7),
 	fetched_at timestamptz
 )
