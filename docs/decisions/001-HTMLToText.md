@@ -1,7 +1,7 @@
 001- HTML to Text Conversion
 ## Status
 Proposed
-Decision Date: 2024-06-15
+Decision Date: 2026-09-15
 
 ## Context
 As of now we are using beautiful soup to convert HTML to text.  The way the these tool works is that they only parse then text 
@@ -29,5 +29,7 @@ So we need a way to preserve the link address in the text conversion process. We
     Cons: More effort, loose context.
 
 ## Decision
-Go with Option 1 , initial effort but not more effort after the parsing is done.  The data is preserved and we don't have to create additional data structures.  
+Go with Option 1 , initial effort but not more effort after the parsing is done.  The data is preserved, and we don't have to create additional data structures.  
 
+## Consequences
+The text should have updated parsed text which contains the full link. The raw html should be kept as is to not lose the original data. 

@@ -46,13 +46,16 @@ def save_comments_to_db(thread, comments):
         cursor = connection.cursor()
         for comment in comments:
             updated_comment = update_a_tag(comment["comment"])
+            if updated_comment == "error":
+                print(f"Error processing comment {comment['id']}. Skipping...")
+                continue
             soup = BeautifulSoup(updated_comment, "html.parser")
             try:
                 cursor.execute(
                     "INSERT INTO posting "
                     "(source, source_id, raw_html, text, posted_at, thread_month, fetched_at ) "
                     "VALUES ('hn', %s, %s, %s, %s, %s, NOW())",
-                    (comment["id"], updated_comment,soup.get_text(separator=HTML_SEPARATOR),comment["createdAt"],thread["thread_month"] )
+                    (comment["id"], comment["comment"],soup.get_text(separator=HTML_SEPARATOR),comment["createdAt"],thread["thread_month"] )
                 )
                 connection.commit()
 
@@ -62,7 +65,7 @@ def save_comments_to_db(thread, comments):
                 cursor.execute(
                     "UPDATE posting SET " 
                     "raw_html = %s, text = %s, fetched_at = NOW() WHERE source='hn' AND source_id=%s ;",
-                    (updated_comment,soup.get_text(separator=HTML_SEPARATOR),str(comment["id"])))
+                    (comment["comment"],soup.get_text(separator=HTML_SEPARATOR),str(comment["id"])))
                 connection.commit()
 
         cursor.close()
@@ -79,11 +82,13 @@ def main():
         save_comments_to_db(thread, comments)
 
 def update_a_tag(comment):
-    soup = BeautifulSoup(comment, 'html.parser')
-    for a_tag in soup.find_all('a'):
-        if a_tag and a_tag.has_attr('href') and a_tag.string != a_tag['href']:
-            a_tag.string.replace_with(a_tag['href'])
-            print(f"Updated <a> tag: {a_tag}")
+    try:
+        soup = BeautifulSoup(comment, 'html.parser')
+        for a_tag in soup.find_all('a'):
+            if a_tag and a_tag.has_attr('href') and a_tag.string != a_tag['href']:
+                a_tag.string = a_tag['href']
+    except Exception as e:
+        return "error"
     return str(soup)
 
 if __name__ == "__main__":
