@@ -1,3 +1,7 @@
+import argparse
+import json
+import sys
+
 import requests
 import psycopg2
 from bs4 import BeautifulSoup
@@ -32,7 +36,48 @@ def get_thread_comments(thread_id):
         print(f"Error fetching comments for thread {thread_id}: {response.status_code}")
         return []
 
-def save_comments_to_db(thread, comments):
+def save_comments_to_cache(thread, comments):
+    # Placeholder function to save comments to a database
+    # Implement your database saving logic here
+    connection = psycopg2.connect(
+        dbname="project_db",
+        user="postgres",
+        password="postgres",
+        host="localhost",
+        port="5432"
+    )
+    cursor = connection.cursor()
+    try:
+        cursor.execute(
+            "INSERT INTO posting_cache "
+            "(thread_id, source, postings,thread_month,fetched_at ) "
+            "VALUES (%s,'hn', %s,%s,  NOW())",
+            (thread["id"], json.dumps(comments), thread['thread_month'] )
+        )
+        connection.commit()
+        cursor.close()
+        connection.close()
+    except UniqueViolation:
+        print(f"Duplicate entry for thread {thread['id']}. Updating existing entry.")
+        connection.rollback()
+        cursor.execute(
+            "UPDATE posting_cache SET " 
+            "postings = %s, fetched_at = NOW() WHERE thread_id=%s ;",
+            (json.dumps(comments), thread["id"] ))
+        connection.commit()
+        cursor.close()
+        connection.close()
+    except Exception as e:
+        print(f"Error saving comments to the cache: {e}")
+    print(f"Saving cache  comments for thread {thread['id']} to the database...")
+
+def store_threads() :
+    threads = get_hiring_threads()
+    for thread in threads:
+        comments = get_thread_comments(thread["id"])
+        save_comments_to_cache(thread, comments)
+
+def save_comments_to_db(thread):
     # Placeholder function to save comments to a database
     # Implement your database saving logic here
     try:
@@ -44,9 +89,9 @@ def save_comments_to_db(thread, comments):
             port="5432"
         )
         cursor = connection.cursor()
-        for comment in comments:
+        for comment in thread["comments"]:
             updated_comment = update_a_tag(comment["comment"])
-            if updated_comment == "error":
+            if updated_comment is None:
                 print(f"Error processing comment {comment['id']}. Skipping...")
                 continue
             soup = BeautifulSoup(updated_comment, "html.parser")
@@ -74,13 +119,6 @@ def save_comments_to_db(thread, comments):
         print(f"Error saving comments to the database: {e}")
     print(f"Saving comments for thread {thread['id']} to the database...")
 
-
-def main():
-    threads = get_hiring_threads()
-    for thread in threads:
-        comments = get_thread_comments(thread["id"])
-        save_comments_to_db(thread, comments)
-
 def update_a_tag(comment):
     try:
         soup = BeautifulSoup(comment, 'html.parser')
@@ -88,9 +126,46 @@ def update_a_tag(comment):
             if a_tag and a_tag.has_attr('href') and a_tag.string != a_tag['href']:
                 a_tag.string = a_tag['href']
     except Exception as e:
-        return "error"
+        print(f"Error processing comment {comment['id']}: {e}")
+        return None
     return str(soup)
 
+def get_threads_from_cache():
+    connection = psycopg2.connect(
+        dbname="project_db",
+        user="postgres",
+        password="postgres",
+        host="localhost",
+        port="5432"
+    )
+    cursor = connection.cursor()
+    try:
+        cursor.execute("SELECT thread_id, postings, thread_month FROM posting_cache")
+        threads = cursor.fetchall()
+        cursor.close()
+        connection.close()
+        return [{"id": thread[0], "comments": thread[1], "thread_month":thread[2]} for thread in threads]
+    except Exception as e:
+        print(f"Error fetching threads from the database: {e}")
+        return []
+
+
+def main(argv=None):
+    # 1. Setup the parser
+    parser = argparse.ArgumentParser(description="Script running inside main.")
+    parser.add_argument("--refresh", action="store_true", help="Trigger a data refresh")
+
+    # 2. Parse the arguments.
+    # Passing 'argv' here tells argparse to read the list we handed to main()
+    args = parser.parse_args(argv)
+
+    # 3. Your logic
+    if args.refresh:
+        store_threads()
+    threads = get_threads_from_cache()
+    for thread in threads:
+        save_comments_to_db(thread)
+
 if __name__ == "__main__":
-    main()
+    main(sys.argv[1:])
 

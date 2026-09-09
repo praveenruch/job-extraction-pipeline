@@ -1,7 +1,7 @@
 001- HTML to Text Conversion
 ## Status
-Proposed
-Decision Date: 2026-09-15
+Accepted
+Decision Date: 2026-09-08
 
 ## Context
 As of now we are using beautiful soup to convert HTML to text.  The way the these tool works is that they only parse then text 
