@@ -3,7 +3,7 @@ import psycopg2
 from bs4 import BeautifulSoup
 from psycopg2.errors import UniqueViolation
 
-
+HTML_SEPARATOR = "\n"
 def get_hiring_threads():
 
     base_url = "https://hn.algolia.com/api/v1/search_by_date?query=Ask%20HN:%20Who%20is%20hiring?&tags=story,author_whoishiring"
@@ -45,13 +45,14 @@ def save_comments_to_db(thread, comments):
         )
         cursor = connection.cursor()
         for comment in comments:
-            soup = BeautifulSoup(comment["comment"], 'html.parser')
+            updated_comment = update_a_tag(comment["comment"])
+            soup = BeautifulSoup(updated_comment, "html.parser")
             try:
                 cursor.execute(
                     "INSERT INTO posting "
                     "(source, source_id, raw_html, text, posted_at, thread_month, fetched_at ) "
                     "VALUES ('hn', %s, %s, %s, %s, %s, NOW())",
-                    (comment["id"], comment["comment"],soup.get_text(separator="|"),comment["createdAt"],thread["thread_month"] )
+                    (comment["id"], updated_comment,soup.get_text(separator=HTML_SEPARATOR),comment["createdAt"],thread["thread_month"] )
                 )
                 connection.commit()
 
@@ -61,7 +62,7 @@ def save_comments_to_db(thread, comments):
                 cursor.execute(
                     "UPDATE posting SET " 
                     "raw_html = %s, text = %s, fetched_at = NOW() WHERE source='hn' AND source_id=%s ;",
-                    (comment["comment"],soup.get_text(),str(comment["id"])))
+                    (updated_comment,soup.get_text(separator=HTML_SEPARATOR),str(comment["id"])))
                 connection.commit()
 
         cursor.close()
@@ -76,6 +77,14 @@ def main():
     for thread in threads:
         comments = get_thread_comments(thread["id"])
         save_comments_to_db(thread, comments)
+
+def update_a_tag(comment):
+    soup = BeautifulSoup(comment, 'html.parser')
+    for a_tag in soup.find_all('a'):
+        if a_tag and a_tag.has_attr('href') and a_tag.string != a_tag['href']:
+            a_tag.string.replace_with(a_tag['href'])
+            print(f"Updated <a> tag: {a_tag}")
+    return str(soup)
 
 if __name__ == "__main__":
     main()
