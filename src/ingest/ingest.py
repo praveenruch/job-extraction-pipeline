@@ -51,7 +51,7 @@ def save_comments_to_db(thread, comments):
                     "INSERT INTO posting "
                     "(source, source_id, raw_html, text, posted_at, thread_month, fetched_at ) "
                     "VALUES ('hn', %s, %s, %s, %s, %s, NOW())",
-                    (comment["id"], comment["comment"],soup.get_text(),comment["createdAt"],thread["thread_month"] )
+                    (comment["id"], comment["comment"],soup.get_text(separator="|"),comment["createdAt"],thread["thread_month"] )
                 )
                 connection.commit()
 
@@ -60,8 +60,8 @@ def save_comments_to_db(thread, comments):
                 connection.rollback()
                 cursor.execute(
                     "UPDATE posting SET " 
-                    "raw_html = %s, text = %s, fetched_at = NOW() WHERE source='hn' AND source_id='%s' ;",
-                    (comment["comment"],soup.get_text(),comment["id"]))
+                    "raw_html = %s, text = %s, fetched_at = NOW() WHERE source='hn' AND source_id=%s ;",
+                    (comment["comment"],soup.get_text(),str(comment["id"])))
                 connection.commit()
 
         cursor.close()
