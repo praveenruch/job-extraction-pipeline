@@ -32,7 +32,6 @@ def get_thread_comments(thread_id):
     if response.status_code == 200:
         data = response.json()
         return data
-        #return [{"id":comment["id"], "comment":comment['text'], "createdAt":comment["created_at"]} for comment in data.get('children', []) if 'text' in comment]
     else:
         print(f"Error fetching comments for thread {thread_id}: {response.status_code}")
         return {}
@@ -48,8 +47,6 @@ def save_comments_to_cache(thread, comments):
         host="localhost",
         port="5432"
     )
-    print("thread",thread)
-    print("comments",comments)
     cursor = connection.cursor()
     try:
         cursor.execute(
@@ -71,7 +68,6 @@ def save_comments_to_cache(thread, comments):
         connection.commit()
         cursor.close()
         connection.close()
-        print(f"Saving cache  comments for thread {thread['id']} to the database...")
     except Exception as e:
         print(f"Error saving comments to the cache: {e}")
 
@@ -93,7 +89,6 @@ def save_comments_to_db(thread):
             host="localhost",
             port="5432"
         )
-        # return [{"id":comment["id"], "comment":comment['text'], "createdAt":comment["created_at"]} for comment in data.get('children', []) if 'text' in comment]
         cursor = connection.cursor()
         comments = thread["comments"].get('children', [])
         for comment in comments:
@@ -122,7 +117,6 @@ def save_comments_to_db(thread):
 
         cursor.close()
         connection.close()
-        print(f"Saving comments for thread {thread['id']} to the database...")
     except Exception as e:
         print(f"Error saving comments to the database: {e}")
 
