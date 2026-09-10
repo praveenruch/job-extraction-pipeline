@@ -71,9 +71,10 @@ def save_comments_to_cache(thread, comments):
         connection.commit()
         cursor.close()
         connection.close()
+        print(f"Saving cache  comments for thread {thread['id']} to the database...")
     except Exception as e:
         print(f"Error saving comments to the cache: {e}")
-    print(f"Saving cache  comments for thread {thread['id']} to the database...")
+
 
 def store_threads() :
     threads = get_hiring_threads()
@@ -121,9 +122,10 @@ def save_comments_to_db(thread):
 
         cursor.close()
         connection.close()
+        print(f"Saving comments for thread {thread['id']} to the database...")
     except Exception as e:
         print(f"Error saving comments to the database: {e}")
-    print(f"Saving comments for thread {thread['id']} to the database...")
+
 
 def update_a_tag(comment):
     try:
