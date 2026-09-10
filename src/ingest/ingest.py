@@ -37,9 +37,6 @@ def get_thread_comments(thread_id):
         return {}
 
 def save_comments_to_cache(thread, comments):
-    print(f"Saving comments to cache for thread {thread}")
-    # Placeholder function to save comments to a database
-    # Implement your database saving logic here
     connection = psycopg2.connect(
         dbname="project_db",
         user="postgres",
@@ -92,9 +89,8 @@ def save_comments_to_db(thread):
         cursor = connection.cursor()
         comments = thread["comments"].get('children', [])
         for comment in comments:
-            updated_comment = update_a_tag(comment["text"])
+            updated_comment = None if comment["text"] is None  else update_a_tag(comment["text"])
             if updated_comment is None:
-                print(f"Error processing comment {comment}. Skipping...")
                 continue
             soup = BeautifulSoup(updated_comment, "html.parser")
             try:
@@ -127,8 +123,7 @@ def update_a_tag(comment):
         for a_tag in soup.find_all('a'):
             if a_tag and a_tag.has_attr('href') and a_tag.string != a_tag['href']:
                 a_tag.string = a_tag['href']
-    except Exception as e:
-        print(f"Error processing comment {comment}: {e}")
+    except :
         return None
     return str(soup)
 
