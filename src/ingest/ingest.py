@@ -6,6 +6,8 @@ import requests
 import psycopg2
 from bs4 import BeautifulSoup
 from psycopg2.errors import UniqueViolation
+import os
+from dotenv import load_dotenv
 
 HTML_SEPARATOR = "\n"
 def get_hiring_threads():
@@ -37,13 +39,7 @@ def get_thread_comments(thread_id):
         return {}
 
 def save_comments_to_cache(thread, comments):
-    connection = psycopg2.connect(
-        dbname="project_db",
-        user="postgres",
-        password="postgres",
-        host="localhost",
-        port="5432"
-    )
+    connection = get_connection()
     cursor = connection.cursor()
     try:
         cursor.execute(
@@ -76,16 +72,8 @@ def store_threads() :
         save_comments_to_cache(thread, comments)
 
 def save_comments_to_db(thread):
-    # Placeholder function to save comments to a database
-    # Implement your database saving logic here
     try:
-        connection = psycopg2.connect(
-            dbname="project_db",
-            user="postgres",
-            password="postgres",
-            host="localhost",
-            port="5432"
-        )
+        connection = get_connection()
         cursor = connection.cursor()
         comments = thread["comments"].get('children', [])
         for comment in comments:
@@ -117,6 +105,11 @@ def save_comments_to_db(thread):
         print(f"Error saving comments to the database: {e}")
 
 
+def get_connection()  -> psycopg2.extensions.connection:
+    connection = psycopg2.connect(os.environ.get("DATABASE_URL"))
+    return connection
+
+
 def update_a_tag(comment):
     try:
         soup = BeautifulSoup(comment, 'html.parser')
@@ -129,13 +122,7 @@ def update_a_tag(comment):
     return str(soup)
 
 def get_threads_from_cache():
-    connection = psycopg2.connect(
-        dbname="project_db",
-        user="postgres",
-        password="postgres",
-        host="localhost",
-        port="5432"
-    )
+    connection = get_connection()
     cursor = connection.cursor()
     try:
         cursor.execute("SELECT thread_id, postings, thread_month FROM posting_cache")
@@ -156,7 +143,7 @@ def main(argv=None):
     # 2. Parse the arguments.
     # Passing 'argv' here tells argparse to read the list we handed to main()
     args = parser.parse_args(argv)
-
+    load_dotenv()
     # 3. Your logic
     if args.refresh:
         store_threads()
