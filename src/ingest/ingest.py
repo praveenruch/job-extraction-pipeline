@@ -31,12 +31,14 @@ def get_thread_comments(thread_id):
     response = requests.get(base_url)
     if response.status_code == 200:
         data = response.json()
-        return [{"id":comment["id"], "comment":comment['text'], "createdAt":comment["created_at"]} for comment in data.get('children', []) if 'text' in comment]
+        return data
+        #return [{"id":comment["id"], "comment":comment['text'], "createdAt":comment["created_at"]} for comment in data.get('children', []) if 'text' in comment]
     else:
         print(f"Error fetching comments for thread {thread_id}: {response.status_code}")
-        return []
+        return {}
 
 def save_comments_to_cache(thread, comments):
+    print(f"Saving comments to cache for thread {thread}")
     # Placeholder function to save comments to a database
     # Implement your database saving logic here
     connection = psycopg2.connect(
@@ -46,6 +48,8 @@ def save_comments_to_cache(thread, comments):
         host="localhost",
         port="5432"
     )
+    print("thread",thread)
+    print("comments",comments)
     cursor = connection.cursor()
     try:
         cursor.execute(
@@ -88,11 +92,13 @@ def save_comments_to_db(thread):
             host="localhost",
             port="5432"
         )
+        # return [{"id":comment["id"], "comment":comment['text'], "createdAt":comment["created_at"]} for comment in data.get('children', []) if 'text' in comment]
         cursor = connection.cursor()
-        for comment in thread["comments"]:
-            updated_comment = update_a_tag(comment["comment"])
+        comments = thread["comments"].get('children', [])
+        for comment in comments:
+            updated_comment = update_a_tag(comment["text"])
             if updated_comment is None:
-                print(f"Error processing comment {comment['id']}. Skipping...")
+                print(f"Error processing comment {comment}. Skipping...")
                 continue
             soup = BeautifulSoup(updated_comment, "html.parser")
             try:
@@ -100,7 +106,7 @@ def save_comments_to_db(thread):
                     "INSERT INTO posting "
                     "(source, source_id, raw_html, text, posted_at, thread_month, fetched_at ) "
                     "VALUES ('hn', %s, %s, %s, %s, %s, NOW())",
-                    (comment["id"], comment["comment"],soup.get_text(separator=HTML_SEPARATOR),comment["createdAt"],thread["thread_month"] )
+                    (comment["id"], comment["text"],soup.get_text(separator=HTML_SEPARATOR),comment["created_at"],thread["thread_month"] )
                 )
                 connection.commit()
 
@@ -110,7 +116,7 @@ def save_comments_to_db(thread):
                 cursor.execute(
                     "UPDATE posting SET " 
                     "raw_html = %s, text = %s, fetched_at = NOW() WHERE source='hn' AND source_id=%s ;",
-                    (comment["comment"],soup.get_text(separator=HTML_SEPARATOR),str(comment["id"])))
+                    (comment["text"],soup.get_text(separator=HTML_SEPARATOR),str(comment["id"])))
                 connection.commit()
 
         cursor.close()
@@ -126,7 +132,7 @@ def update_a_tag(comment):
             if a_tag and a_tag.has_attr('href') and a_tag.string != a_tag['href']:
                 a_tag.string = a_tag['href']
     except Exception as e:
-        print(f"Error processing comment {comment['id']}: {e}")
+        print(f"Error processing comment {comment}: {e}")
         return None
     return str(soup)
 
