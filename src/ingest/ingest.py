@@ -89,7 +89,7 @@ def save_comments_to_db(thread):
         cursor = connection.cursor()
         comments = thread["comments"].get('children', [])
         for comment in comments:
-            updated_comment = None if comment["text"] is None  else update_a_tag(comment["text"])
+            updated_comment = None if comment.get("text") is None  else update_a_tag(comment["text"])
             if updated_comment is None:
                 continue
             soup = BeautifulSoup(updated_comment, "html.parser")
@@ -123,7 +123,8 @@ def update_a_tag(comment):
         for a_tag in soup.find_all('a'):
             if a_tag and a_tag.has_attr('href') and a_tag.string != a_tag['href']:
                 a_tag.string = a_tag['href']
-    except :
+    except Exception as e :
+        print(f"Error processing comment: {comment} with error -{e}")
         return None
     return str(soup)
 
